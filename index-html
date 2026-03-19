@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+    font-family:Arial;
+    background:#eaeaea;
+    margin:0;
+    padding:10px;
+}
+
+.fatura{
+    background:#fff;
+    padding:15px;
+    width:100%;
+    max-width:600px;
+    margin:auto;
+    border-radius:6px;
+    box-sizing:border-box;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    font-size:36px;
+    font-weight:bold;
+    color:#e60000;
+}
+
+.top{
+    font-size:12px;
+    margin-top:10px;
+    border-bottom:1px solid #ddd;
+    padding-bottom:10px;
+}
+
+.row{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+    flex-wrap:wrap;
+}
+
+.box{
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:10px;
+    flex:1 1 100%;
+    font-size:12px;
+}
+
+.gun{
+    text-align:center;
+}
+
+.gun span{
+    color:#e60000;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.graybox{
+    border:1px solid #ddd;
+    background:#f7f7f7;
+    padding:10px;
+    border-radius:10px;
+    margin-top:12px;
+    font-size:12px;
+}
+
+table{
+    width:100%;
+    margin-top:12px;
+    border-collapse:collapse;
+    font-size:12px;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:8px;
+    text-align:center;
+}
+
+th{
+    background:#f2f2f2;
+}
+
+.alt{
+    margin-top:10px;
+    font-size:12px;
+}
+
+.total{
+    text-align:right;
+    color:#c40000;
+    font-weight:bold;
+    margin-top:5px;
+}
+
+.qr{
+    text-align:center;
+    margin-top:15px;
+}
+
+[contenteditable]{
+    outline:none;
+    border-bottom:1px dashed #aaa;
+}
+
+.btn{
+    margin-top:10px;
+    padding:12px;
+    width:100%;
+    border:none;
+    background:#28a745;
+    color:white;
+    border-radius:8px;
+    font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="pdf" class="fatura">
+
+<div class="header">
+<div class="logo">AVIS</div>
+<div style="font-size:11px;">e-Arşiv</div>
+</div>
+
+<div class="top">
+Rezervasyon No: <span id="rez" contenteditable="true"></span><br>
+Tarih: <span id="tarih"></span>
+</div>
+
+<div class="row">
+
+<div class="box">
+<b contenteditable="true">AVIS OTOMOTİV</b><br><br>
+Ticaret: <span contenteditable="true">459231</span><br>
+MERSİS: <span contenteditable="true">0649019353100258</span><br>
+Vergi: <span contenteditable="true">6490193531</span>
+</div>
+
+<div class="box">
+<span id="ad" contenteditable="true">Mehmet Tekin</span><br>
+<span contenteditable="true">Ankara</span><br><br>
+Başlangıç: <span contenteditable="true">19.03.2026</span><br>
+Bitiş: <span contenteditable="true">19.03.2026</span>
+</div>
+
+<div class="box gun">
+Gün<br>
+<span id="gun" contenteditable="true">1</span>
+</div>
+
+</div>
+
+<div class="graybox">
+<b>Araç</b><br>
+<span contenteditable="true">Opel Corsa</span>
+</div>
+
+<table>
+<tr>
+<th>Ücret</th>
+<th>KDV</th>
+<th>Toplam</th>
+</tr>
+
+<tr>
+<td id="ucret" contenteditable="true">750</td>
+<td id="kdv">0</td>
+<td id="toplam">0</td>
+</tr>
+</table>
+
+<div class="alt">
+Ödeme: <span contenteditable="true">Kredi Kartı</span>
+</div>
+
+<div class="total">
+Genel: <span id="genel">0</span> TL
+</div>
+
+<div class="qr">
+<img id="qr" width="100">
+</div>
+
+</div>
+
+<button class="btn" onclick="hesapla()">Hesapla</button>
+<button class="btn" onclick="pdfOlustur()">PDF Oluştur</button>
+
+<script>
+
+// tarih + random rezervasyon
+document.getElementById("tarih").innerText = new Date().toLocaleString();
+document.getElementById("rez").innerText = Math.floor(Math.random()*10000000);
+
+// hesaplama
+function hesapla(){
+let ucret = Number(document.getElementById("ucret").innerText) || 0;
+let kdv = ucret * 0.20;
+let toplam = ucret + kdv;
+
+document.getElementById("kdv").innerText = kdv.toFixed(2);
+document.getElementById("toplam").innerText = toplam.toFixed(2);
+document.getElementById("genel").innerText = toplam.toFixed(2);
+
+// QR
+document.getElementById("qr").src =
+`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${toplam}`;
+}
+
+hesapla();
+
+// ✅ FULL FIX PDF (mobil + çok sayfa)
+async function pdfOlustur(){
+    const { jsPDF } = window.jspdf;
+
+    window.scrollTo(0,0);
+
+    let element = document.getElementById("pdf");
+
+    let canvas = await html2canvas(element,{
+        scale:2,
+        useCORS:true
+    });
+
+    let imgData = canvas.toDataURL("image/png");
+
+    let pdf = new jsPDF('p','mm','a4');
+
+    let pageWidth = 210;
+    let pageHeight = 297;
+
+    let margin = 10;
+    let imgWidth = pageWidth - (margin*2);
+    let imgHeight = canvas.height * imgWidth / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    while(heightLeft > 0){
+        pdf.addImage(imgData,'PNG',margin,position + margin,imgWidth,imgHeight);
+        heightLeft -= pageHeight;
+
+        if(heightLeft > 0){
+            pdf.addPage();
+            position -= pageHeight;
+        }
+    }
+
+    pdf.save("fatura.pdf");
+}
+
+</script>
+
+</body>
+</html>
